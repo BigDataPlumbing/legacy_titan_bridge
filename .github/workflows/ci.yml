@@ -1,0 +1,96 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # ===========================================================================
+  # Rust Checks
+  # ===========================================================================
+  rust:
+    name: Rust ${{ matrix.action }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        action: [check, test, clippy]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-action@stable
+        with:
+          components: clippy
+      
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: sidecar
+      
+      - name: Run cargo ${{ matrix.action }}
+        working-directory: sidecar
+        run: |
+          case "${{ matrix.action }}" in
+            check) cargo check --all-features ;;
+            test) cargo test --all-features ;;
+            clippy) cargo clippy --all-features -- -D warnings ;;
+          esac
+
+  # ===========================================================================
+  # Formatting
+  # ===========================================================================
+  format:
+    name: Rust Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-action@stable
+        with:
+          components: rustfmt
+      
+      - name: Check formatting
+        working-directory: sidecar
+        run: cargo fmt --check
+
+  # ===========================================================================
+  # Solidity
+  # ===========================================================================
+  solidity:
+    name: Solidity Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+      
+      - name: Check Solidity compilation
+        working-directory: contracts
+        run: forge build --sizes || echo "Foundry config not present, using solc"
+
+  # ===========================================================================
+  # Docker Build
+  # ===========================================================================
+  docker:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

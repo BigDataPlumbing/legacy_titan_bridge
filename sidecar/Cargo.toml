@@ -1,0 +1,60 @@
+[package]
+name = "titan-sidecar"
+version = "0.1.0"
+edition = "2021"
+authors = ["BDP Engineering <engineering@bdp.dev>"]
+description = "Enterprise security sidecar for COBOL-to-blockchain bridging"
+license = "Apache-2.0"
+repository = "https://github.com/bdp/legacy-titan-bridge"
+keywords = ["blockchain", "cobol", "merkle", "enterprise", "security"]
+categories = ["cryptography", "web-programming"]
+
+[dependencies]
+# Async runtime
+tokio = { version = "1.35", features = ["full"] }
+
+# Web framework
+axum = { version = "0.7", features = ["macros"] }
+tower = "0.4"
+tower-http = { version = "0.5", features = ["cors", "trace"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Merkle tree
+rs_merkle = "1.4"
+sha2 = "0.10"
+
+# Ethereum integration
+ethers = { version = "2.0", features = ["legacy"] }
+
+# FFI for COBOL
+libloading = "0.8"
+
+# Logging & tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# Error handling
+thiserror = "1.0"
+anyhow = "1.0"
+
+# Utilities
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1.6", features = ["v4", "serde"] }
+hex = "0.4"
+parking_lot = "0.12"
+
+# Configuration
+dotenvy = "0.15"
+
+[dev-dependencies]
+tokio-test = "0.4"
+reqwest = { version = "0.11", features = ["json"] }
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

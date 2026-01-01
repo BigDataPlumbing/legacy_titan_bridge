@@ -1,0 +1,36 @@
+# Build artifacts
+target/
+*.so
+*.o
+*.dylib
+
+# Rust
+**/*.rs.bk
+Cargo.lock
+
+# COBOL
+*.cob
+*.int
+*.gnt
+
+# Solidity
+node_modules/
+artifacts/
+cache/
+typechain-types/
+
+# Environment
+.env
+.env.local
+*.pem
+*.key
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+
+# Logs
+*.log

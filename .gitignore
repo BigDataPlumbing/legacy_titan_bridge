@@ -1,0 +1,49 @@
+# Rust build artifacts
+/sidecar/target/
+**/*.rs.bk
+Cargo.lock
+
+# COBOL compiled objects
+*.so
+*.o
+*.cob
+*.int
+*.gnt
+*.dylib
+
+# Solidity artifacts
+/contracts/artifacts/
+/contracts/cache/
+/contracts/node_modules/
+/contracts/typechain-types/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Docker
+*.log
+
+# Test artifacts
+/coverage/
+*.profraw
+*.profdata
+
+# Build outputs
+/build/
+/dist/

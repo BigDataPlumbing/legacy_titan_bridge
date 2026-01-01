@@ -1,0 +1,102 @@
+# ==============================================================================
+# Legacy Titan Bridge - Docker Compose for Local Development
+# ==============================================================================
+# Provides a complete local development environment including:
+# - Titan Sidecar (Rust + COBOL)
+# - Local Ethereum node (Hardhat/Anvil)
+# - Optional monitoring stack
+# ==============================================================================
+
+version: "3.9"
+
+services:
+  # ============================================================================
+  # Titan Sidecar - Main Application
+  # ============================================================================
+  titan-sidecar:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: titan-sidecar
+    ports:
+      - "3000:3000"
+    environment:
+      - SIDECAR_PORT=3000
+      - RUST_LOG=info,titan_sidecar=debug
+      - ETH_RPC_URL=http://ethereum:8545
+      - ANCHOR_CONTRACT=${ANCHOR_CONTRACT:-}
+      - PRIVATE_KEY=${PRIVATE_KEY:-}
+      - RISK_THRESHOLD=10000
+      - COBOL_LIB_PATH=/usr/lib/titan/libcorebanking.so
+    depends_on:
+      ethereum:
+        condition: service_healthy
+    networks:
+      - titan-network
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:3000/health" ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  # ============================================================================
+  # Local Ethereum Node (Anvil/Foundry)
+  # ============================================================================
+  ethereum:
+    image: ghcr.io/foundry-rs/foundry:latest
+    container_name: titan-ethereum
+    command: >
+      anvil --host 0.0.0.0 --port 8545 --chain-id 31337 --accounts 10 --balance 1000 --block-time 1
+    ports:
+      - "8545:8545"
+    networks:
+      - titan-network
+    healthcheck:
+      test: [ "CMD", "curl", "-sf", "http://localhost:8545" ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+  # ============================================================================
+  # Contract Deployer (One-shot container)
+  # ============================================================================
+  deploy-contracts:
+    image: ghcr.io/foundry-rs/foundry:latest
+    container_name: titan-deploy
+    working_dir: /contracts
+    volumes:
+      - ./contracts:/contracts:ro
+    depends_on:
+      ethereum:
+        condition: service_healthy
+    networks:
+      - titan-network
+    command: >
+      sh -c "
+        echo 'Deploying Anchor contract...' &&
+        forge create --rpc-url http://ethereum:8545 
+          --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+          Anchor.sol:Anchor 
+          --constructor-args 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 ||
+        echo 'Deployment skipped or failed - contract may already exist'
+      "
+    profiles:
+      - deploy
+
+# ==============================================================================
+# Networks
+# ==============================================================================
+networks:
+  titan-network:
+    driver: bridge
+    name: titan-bridge-network
+
+# ==============================================================================
+# Volumes (for persistent data if needed)
+# ==============================================================================
+volumes:
+  ethereum-data:
+    driver: local
