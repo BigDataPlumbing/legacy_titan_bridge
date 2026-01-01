@@ -59,13 +59,13 @@ impl MerkleAccumulator {
         let position = state.leaves.len();
         state.leaves.push(*hash);
         state.total_processed += 1;
-        
+
         info!(
             position = %position,
             total_processed = %state.total_processed,
             "Added leaf to Merkle tree"
         );
-        
+
         position
     }
 
@@ -76,14 +76,14 @@ impl MerkleAccumulator {
         let start_position = state.leaves.len();
         state.leaves.extend_from_slice(hashes);
         state.total_processed += hashes.len() as u64;
-        
+
         info!(
             start_position = %start_position,
             count = %hashes.len(),
             total_processed = %state.total_processed,
             "Added batch to Merkle tree"
         );
-        
+
         start_position
     }
 
@@ -91,47 +91,47 @@ impl MerkleAccumulator {
     /// Returns None if the tree is empty
     pub fn compute_root(&self) -> Option<([u8; 32], usize)> {
         let state = self.state.read();
-        
+
         if state.leaves.is_empty() {
             return None;
         }
 
         // Build Merkle tree
         let tree: MerkleTree<Sha256> = MerkleTree::from_leaves(&state.leaves);
-        
+
         let root = tree.root()?;
         let leaf_count = state.leaves.len();
-        
+
         info!(
             leaf_count = %leaf_count,
             root = %hex::encode(&root),
             "Computed Merkle root"
         );
-        
+
         Some((root, leaf_count))
     }
 
     /// Reset the tree after a successful commit
     pub fn reset(&self) {
         let mut state = self.state.write();
-        
+
         // Store the last root before clearing
         if !state.leaves.is_empty() {
             if let Some((root, _)) = self.compute_root_internal(&state.leaves) {
                 state.last_root = Some(root);
             }
         }
-        
+
         state.last_commit_time = Some(Utc::now());
         state.leaves.clear();
-        
+
         info!("Merkle tree reset after commit");
     }
 
     /// Get current tree status
     pub fn get_status(&self) -> TreeStatus {
         let state = self.state.read();
-        
+
         TreeStatus {
             leaf_count: state.leaves.len(),
             pending_commits: if state.leaves.is_empty() { 0 } else { 1 },
@@ -150,7 +150,7 @@ impl MerkleAccumulator {
         if leaves.is_empty() {
             return None;
         }
-        
+
         let tree: MerkleTree<Sha256> = MerkleTree::from_leaves(leaves);
         let root = tree.root()?;
         Some((root, leaves.len()))
@@ -160,14 +160,14 @@ impl MerkleAccumulator {
     /// Returns None if index is out of bounds or tree is empty
     pub fn generate_proof(&self, index: usize) -> Option<Vec<[u8; 32]>> {
         let state = self.state.read();
-        
+
         if index >= state.leaves.len() {
             return None;
         }
 
         let tree: MerkleTree<Sha256> = MerkleTree::from_leaves(&state.leaves);
         let proof = tree.proof(&[index]);
-        
+
         Some(proof.proof_hashes().to_vec())
     }
 }
@@ -186,12 +186,12 @@ pub fn hash_transaction(
     to_account: &str,
 ) -> [u8; 32] {
     let mut hasher = Sha256Hasher::new();
-    
+
     hasher.update(tx_id.as_bytes());
     hasher.update(amount.to_le_bytes());
     hasher.update(from_account.as_bytes());
     hasher.update(to_account.as_bytes());
-    
+
     let result = hasher.finalize();
     let mut hash = [0u8; 32];
     hash.copy_from_slice(&result);
@@ -212,10 +212,10 @@ mod tests {
     fn test_single_leaf() {
         let acc = MerkleAccumulator::new();
         let hash = hash_transaction("TX-001", 100.0, "ACC-001", "ACC-002");
-        
+
         let pos = acc.add_leaf(&hash);
         assert_eq!(pos, 0);
-        
+
         let (root, count) = acc.compute_root().unwrap();
         assert_eq!(count, 1);
         assert_eq!(root, hash); // Single leaf has itself as root
@@ -224,7 +224,7 @@ mod tests {
     #[test]
     fn test_multiple_leaves() {
         let acc = MerkleAccumulator::new();
-        
+
         for i in 0..100 {
             let hash = hash_transaction(
                 &format!("TX-{:03}", i),
@@ -234,7 +234,7 @@ mod tests {
             );
             acc.add_leaf(&hash);
         }
-        
+
         let (root, count) = acc.compute_root().unwrap();
         assert_eq!(count, 100);
         assert_ne!(root, [0u8; 32]);
@@ -245,9 +245,9 @@ mod tests {
         let acc = MerkleAccumulator::new();
         let hash = hash_transaction("TX-001", 100.0, "ACC-001", "ACC-002");
         acc.add_leaf(&hash);
-        
+
         acc.reset();
-        
+
         let status = acc.get_status();
         assert_eq!(status.leaf_count, 0);
         assert!(status.last_root.is_some());
@@ -258,7 +258,7 @@ mod tests {
         let hash1 = hash_transaction("TX-001", 100.0, "ACC-001", "ACC-002");
         let hash2 = hash_transaction("TX-001", 100.0, "ACC-001", "ACC-002");
         assert_eq!(hash1, hash2);
-        
+
         let hash3 = hash_transaction("TX-002", 100.0, "ACC-001", "ACC-002");
         assert_ne!(hash1, hash3);
     }

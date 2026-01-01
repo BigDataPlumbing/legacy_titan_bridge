@@ -153,7 +153,10 @@ async fn handle_transfer(
         }
         None => {
             // Simulate successful COBOL processing when library not available
-            ("00".to_string(), "SUCCESS: Simulated COBOL processing".to_string())
+            (
+                "00".to_string(),
+                "SUCCESS: Simulated COBOL processing".to_string(),
+            )
         }
     };
 
@@ -164,7 +167,7 @@ async fn handle_transfer(
         &request.from_account,
         &request.to_account,
     );
-    
+
     let tree_position = state.merkle.add_leaf(&tx_hash);
 
     // Step 4: Build response
@@ -217,7 +220,7 @@ async fn handle_commit_batch(State(state): State<AppState>) -> impl IntoResponse
         Ok(receipt) => {
             // Reset tree after successful commit
             state.merkle.reset();
-            
+
             (
                 StatusCode::OK,
                 Json(CommitResponse {
@@ -250,7 +253,7 @@ async fn handle_commit_batch(State(state): State<AppState>) -> impl IntoResponse
 /// GET /health - Health check endpoint
 async fn handle_health(State(state): State<AppState>) -> impl IntoResponse {
     let blockchain_connected = state.blockchain.is_connected().await;
-    
+
     Json(HealthResponse {
         status: "healthy".to_string(),
         version: env!("CARGO_PKG_VERSION").to_string(),
@@ -262,7 +265,7 @@ async fn handle_health(State(state): State<AppState>) -> impl IntoResponse {
 /// GET /tree-status - Current Merkle tree status
 async fn handle_tree_status(State(state): State<AppState>) -> impl IntoResponse {
     let status = state.merkle.get_status();
-    
+
     Json(TreeStatusResponse {
         leaf_count: status.leaf_count,
         pending_commits: status.pending_commits,
@@ -294,28 +297,31 @@ async fn main() -> Result<()> {
     // Initialize components
     let merkle = Arc::new(MerkleAccumulator::new());
     let policy = Arc::new(PolicyEngine::new());
-    
+
     // Initialize blockchain client
-    let eth_rpc_url = std::env::var("ETH_RPC_URL")
-        .unwrap_or_else(|_| "http://localhost:8545".to_string());
+    let eth_rpc_url =
+        std::env::var("ETH_RPC_URL").unwrap_or_else(|_| "http://localhost:8545".to_string());
     let contract_address = std::env::var("ANCHOR_CONTRACT").ok();
     let private_key = std::env::var("PRIVATE_KEY").ok();
-    
+
     let blockchain = Arc::new(
-        blockchain::EthereumClient::new(&eth_rpc_url, contract_address, private_key).await?
+        blockchain::EthereumClient::new(&eth_rpc_url, contract_address, private_key).await?,
     );
 
     // Try to load COBOL library
     let cobol_lib_path = std::env::var("COBOL_LIB_PATH")
         .unwrap_or_else(|_| "/usr/lib/libcorebanking.so".to_string());
-    
+
     let cobol = match ffi::CobolBridge::new(&cobol_lib_path) {
         Ok(bridge) => {
             info!("✅ COBOL library loaded from {}", cobol_lib_path);
             Some(Arc::new(bridge))
         }
         Err(e) => {
-            info!("⚠️ COBOL library not available: {}. Running in simulation mode.", e);
+            info!(
+                "⚠️ COBOL library not available: {}. Running in simulation mode.",
+                e
+            );
             None
         }
     };
@@ -343,7 +349,7 @@ async fn main() -> Result<()> {
         .unwrap_or_else(|_| "3000".to_string())
         .parse::<u16>()
         .unwrap_or(3000);
-    
+
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port)).await?;
     info!("🌐 Server listening on http://0.0.0.0:{}", port);
     info!("📊 Endpoints:");

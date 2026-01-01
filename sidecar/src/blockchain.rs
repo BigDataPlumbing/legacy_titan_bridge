@@ -17,13 +17,13 @@ use tracing::{info, warn};
 pub enum BlockchainError {
     #[error("Not connected to Ethereum node")]
     NotConnected,
-    
+
     #[error("Contract not configured")]
     ContractNotConfigured,
-    
+
     #[error("Transaction failed: {0}")]
     TransactionFailed(String),
-    
+
     #[error("Provider error: {0}")]
     ProviderError(String),
 }
@@ -75,7 +75,10 @@ impl EthereumClient {
                         Some(p)
                     }
                     Err(e) => {
-                        warn!("Failed to connect to Ethereum node: {}. Running in offline mode.", e);
+                        warn!(
+                            "Failed to connect to Ethereum node: {}. Running in offline mode.",
+                            e
+                        );
                         None
                     }
                 }
@@ -137,14 +140,21 @@ impl EthereumClient {
         leaf_count: usize,
     ) -> Result<TransactionReceipt, BlockchainError> {
         // Check prerequisites
-        let provider = self.provider.as_ref()
+        let provider = self
+            .provider
+            .as_ref()
             .ok_or(BlockchainError::NotConnected)?;
-        
-        let contract_address = self.contract_address
+
+        let contract_address = self
+            .contract_address
             .ok_or(BlockchainError::ContractNotConfigured)?;
-        
-        let wallet = self.wallet.as_ref()
-            .ok_or(BlockchainError::TransactionFailed("No wallet configured".to_string()))?;
+
+        let wallet = self
+            .wallet
+            .as_ref()
+            .ok_or(BlockchainError::TransactionFailed(
+                "No wallet configured".to_string(),
+            ))?;
 
         info!(
             root = %hex::encode(root),
@@ -195,14 +205,17 @@ impl EthereumClient {
 
     /// Get the number of roots stored in the contract
     pub async fn get_roots_count(&self) -> Result<u64, BlockchainError> {
-        let provider = self.provider.as_ref()
+        let provider = self
+            .provider
+            .as_ref()
             .ok_or(BlockchainError::NotConnected)?;
-        
-        let contract_address = self.contract_address
+
+        let contract_address = self
+            .contract_address
             .ok_or(BlockchainError::ContractNotConfigured)?;
 
         let contract = AnchorContract::new(contract_address, Arc::new(provider.clone()));
-        
+
         let count = contract
             .get_roots_count()
             .call()
@@ -214,14 +227,17 @@ impl EthereumClient {
 
     /// Get a specific root by index
     pub async fn get_root(&self, index: u64) -> Result<[u8; 32], BlockchainError> {
-        let provider = self.provider.as_ref()
+        let provider = self
+            .provider
+            .as_ref()
             .ok_or(BlockchainError::NotConnected)?;
-        
-        let contract_address = self.contract_address
+
+        let contract_address = self
+            .contract_address
             .ok_or(BlockchainError::ContractNotConfigured)?;
 
         let contract = AnchorContract::new(contract_address, Arc::new(provider.clone()));
-        
+
         let root = contract
             .daily_roots(U256::from(index))
             .call()
@@ -239,11 +255,9 @@ mod tests {
     #[tokio::test]
     async fn test_offline_client() {
         // Should create client even with invalid URL
-        let client = EthereumClient::new(
-            "http://invalid-url:8545",
-            None,
-            None,
-        ).await.unwrap();
+        let client = EthereumClient::new("http://invalid-url:8545", None, None)
+            .await
+            .unwrap();
 
         assert!(!client.is_connected().await);
     }

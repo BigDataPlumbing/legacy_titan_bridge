@@ -12,13 +12,13 @@ use thiserror::Error;
 pub enum CobolError {
     #[error("Failed to load COBOL library: {0}")]
     LibraryLoad(String),
-    
+
     #[error("Symbol not found: {0}")]
     SymbolNotFound(String),
-    
+
     #[error("Transaction processing failed: {0}")]
     ProcessingFailed(String),
-    
+
     #[error("Invalid response from COBOL: {0}")]
     InvalidResponse(String),
 }
@@ -74,9 +74,9 @@ impl CobolBridge {
 
         // Verify the PROCESS-TX symbol exists
         unsafe {
-            let _: Symbol<extern "C" fn(*mut CobolRequest, *mut CobolResponse)> =
-                library.get(b"PROCESS-TX")
-                    .map_err(|e| CobolError::SymbolNotFound(format!("PROCESS-TX: {}", e)))?;
+            let _: Symbol<extern "C" fn(*mut CobolRequest, *mut CobolResponse)> = library
+                .get(b"PROCESS-TX")
+                .map_err(|e| CobolError::SymbolNotFound(format!("PROCESS-TX: {}", e)))?;
         }
 
         Ok(Self { _library: library })
@@ -118,11 +118,15 @@ impl CobolBridge {
 
         // Call COBOL processor
         unsafe {
-            let func: Symbol<extern "C" fn(*mut CobolRequest, *mut CobolResponse)> =
-                self._library.get(b"PROCESS-TX")
-                    .map_err(|e| CobolError::SymbolNotFound(format!("PROCESS-TX: {}", e)))?;
-            
-            func(&mut request as *mut CobolRequest, &mut response as *mut CobolResponse);
+            let func: Symbol<extern "C" fn(*mut CobolRequest, *mut CobolResponse)> = self
+                ._library
+                .get(b"PROCESS-TX")
+                .map_err(|e| CobolError::SymbolNotFound(format!("PROCESS-TX: {}", e)))?;
+
+            func(
+                &mut request as *mut CobolRequest,
+                &mut response as *mut CobolResponse,
+            );
         }
 
         // Parse response
@@ -144,9 +148,7 @@ impl CobolBridge {
 
     /// Parse a fixed-size COBOL field to a trimmed Rust string
     fn parse_fixed(src: &[u8]) -> String {
-        String::from_utf8_lossy(src)
-            .trim_end()
-            .to_string()
+        String::from_utf8_lossy(src).trim_end().to_string()
     }
 }
 

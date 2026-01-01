@@ -119,9 +119,7 @@ impl PolicyEngine {
         }
 
         // Rule 3: Same prefix accounts (internal transfers may need scrutiny)
-        if from_account.len() >= 4 
-            && to_account.len() >= 4 
-            && from_account[..4] == to_account[..4] 
+        if from_account.len() >= 4 && to_account.len() >= 4 && from_account[..4] == to_account[..4]
         {
             score = score.saturating_add(5);
             triggered_rules.push("SAME_PREFIX_ACCOUNTS".to_string());
@@ -161,16 +159,16 @@ impl PolicyEngine {
     fn is_suspicious_round_number(amount: f64) -> bool {
         // Check for amounts that are exact thousands (e.g., $9,000, $9,500)
         let cents = (amount * 100.0) as i64;
-        
+
         // Exact thousands
         if cents % 100_000 == 0 && amount >= 1000.0 {
             return true;
         }
-        
+
         // Just under reporting thresholds (common structuring pattern)
         let just_under_10k = amount >= 9_000.0 && amount <= 9_999.0;
         let exact_500 = cents % 50_000 == 0;
-        
+
         just_under_10k && exact_500
     }
 }
@@ -188,38 +186,25 @@ mod tests {
     #[test]
     fn test_low_risk_transaction() {
         let engine = PolicyEngine::new();
-        let assessment = engine.assess_transaction(
-            "TX-001",
-            500.0,
-            "ACC-001",
-            "ACC-002",
-        );
+        let assessment = engine.assess_transaction("TX-001", 500.0, "ACC-001", "ACC-002");
         assert_eq!(assessment.level, RiskLevel::Low);
     }
 
     #[test]
     fn test_high_risk_transaction() {
         let engine = PolicyEngine::new();
-        let assessment = engine.assess_transaction(
-            "TX-002",
-            15_000.0,
-            "ACC-001",
-            "ACC-002",
-        );
+        let assessment = engine.assess_transaction("TX-002", 15_000.0, "ACC-001", "ACC-002");
         assert_eq!(assessment.level, RiskLevel::High);
         assert!(assessment.reason.is_some());
-        assert!(assessment.triggered_rules.contains(&"AMOUNT_HIGH".to_string()));
+        assert!(assessment
+            .triggered_rules
+            .contains(&"AMOUNT_HIGH".to_string()));
     }
 
     #[test]
     fn test_critical_transaction() {
         let engine = PolicyEngine::new();
-        let assessment = engine.assess_transaction(
-            "TX-003",
-            150_000.0,
-            "ACC-001",
-            "ACC-002",
-        );
+        let assessment = engine.assess_transaction("TX-003", 150_000.0, "ACC-001", "ACC-002");
         assert_eq!(assessment.level, RiskLevel::Critical);
     }
 
